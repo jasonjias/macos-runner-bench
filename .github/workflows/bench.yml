@@ -1,0 +1,38 @@
+name: bench
+
+# macOS runner benchmark (board #14, cases/macos-benchmark): a clean debug build of swift-nio 2.104.0.
+# The same file runs in jasonjias/agent-ci on the Mac Studio (self-hosted); only runs-on differs.
+# Started one at a time by tools/bench_dispatch.sh; run-name carries the tag the report filters on.
+run-name: bench ${{ inputs.tag }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Run label, e.g. n01 (smoke runs: smoke-1)"
+        required: true
+  # Only so GitHub registers the workflow from this branch (dispatch otherwise needs it on main).
+  # The job below skips on push, so a push never takes the runner.
+  push:
+    branches: [bench/macos]
+    paths: [.github/workflows/bench.yml]
+
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: apple/swift-nio
+          ref: 6db9d9abd92ad7399b8a564cafbb87d3507245fa # tag 2.104.0
+          path: swift-nio
+      - run: swift --version && sysctl -n machdep.cpu.brand_string hw.ncpu
+      # Fresh scratch path and no shared dependency cache: every run builds from nothing.
+      - name: swift build
+        run: |
+          rm -rf "$RUNNER_TEMP/spm"
+          swift build --package-path swift-nio --scratch-path "$RUNNER_TEMP/spm" --disable-dependency-cache
+      - if: always()
+        run: rm -rf "$RUNNER_TEMP/spm"
