@@ -15,7 +15,6 @@ on:
   # The job below skips on push, so a push never takes the runner.
   push:
     branches: [bench/macos]
-    paths: [.github/workflows/bench.yml]
 
 jobs:
   build:
